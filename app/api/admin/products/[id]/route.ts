@@ -1,0 +1,7 @@
+import {NextResponse} from "next/server";
+import {prisma} from "@/lib/prisma";
+import {requireAdmin} from "@/lib/auth";
+import {z} from "zod";
+const updateSchema=z.object({name:z.string().min(2).max(160),price:z.number().int().min(0),salePrice:z.number().int().min(0).nullable(),stock:z.number().int().min(0),isActive:z.boolean()});
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){const admin=await requireAdmin();if(!admin||!["SUPER_ADMIN","STORE_MANAGER"].includes(admin.role))return NextResponse.json({error:"دسترسی غیرمجاز"},{status:403});const {id}=await params;const parsed=updateSchema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"اطلاعات ویرایش معتبر نیست."},{status:400});try{const product=await prisma.product.update({where:{id},data:parsed.data});return NextResponse.json({product});}catch{return NextResponse.json({error:"محصول پیدا نشد یا ذخیره‌سازی انجام نشد."},{status:404});}}
+export async function DELETE(_request:Request,{params}:{params:Promise<{id:string}>}){const admin=await requireAdmin();if(!admin||admin.role!=="SUPER_ADMIN")return NextResponse.json({error:"فقط مدیر کل اجازه غیرفعال‌سازی را دارد."},{status:403});const {id}=await params;try{const product=await prisma.product.update({where:{id},data:{isActive:false}});return NextResponse.json({product});}catch{return NextResponse.json({error:"محصول پیدا نشد."},{status:404});}}

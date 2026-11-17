@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String    @unique
+  email        String?   @unique
+  passwordHash String
+  role         String    @default("CUSTOMER")
+  isBlocked    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  addresses    Address[]
+  orders       Order[]
+  reviews      Review[]
+  favorites    Favorite[]
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String?
+  province   String
+  city       String
+  address    String
+  postalCode String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String     @default("")
+  image       String     @default("")
+  parentId    String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  products    Product[]
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+}
+
+model Product {
+  id             String           @id @default(cuid())
+  name           String
+  slug           String           @unique
+  excerpt        String           @default("")
+  description    String           @default("")
+  ingredients    String           @default("")
+  origin         String           @default("")
+  storage        String           @default("")
+  warnings       String           @default("")
+  price          Int
+  salePrice      Int?
+  stock          Int              @default(0)
+  unit           String           @default("گرم")
+  unitOptions    String           @default("50,100,250")
+  image          String           @default("")
+  images         String           @default("")
+  isFeatured     Boolean          @default(false)
+  isActive       Boolean          @default(true)
+  isBestseller   Boolean          @default(false)
+  seoTitle       String            @default("")
+  seoDescription String            @default("")
+  categoryId     String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  category       Category         @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  reviews        Review[]
+  favorites      Favorite[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  userId          String?
+  customerName    String
+  phone           String
+  province        String
+  city            String
+  address         String
+  postalCode      String
+  note            String      @default("")
+  subtotal        Int
+  discount        Int          @default(0)
+  shipping        Int          @default(0)
+  total            Int
+  status          String       @default("PENDING_PAYMENT")
+  paymentStatus   String       @default("UNPAID")
+  paymentRef      String       @default("")
+  trackingCode    String       @default("")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User?        @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  name      String
+  quantity  Int
+  unit      String
+  unitPrice Int
+  total     Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  provider    String
+  authority   String   @default("")
+  reference   String   @default("")
+  amount      Int
+  status      String   @default("INITIATED")
+  rawResponse String   @default("")
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String?
+  name      String
+  rating    Int
+  body      String
+  isVisible Boolean  @default(false)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([userId, productId])
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String
+  value       Int
+  minOrder    Int      @default(0)
+  maxUses     Int      @default(0)
+  usedCount   Int      @default(0)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean  @default(true)
+}
+
+model ArticleCategory {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  articles Article[]
+}
+
+model Article {
+  id             String          @id @default(cuid())
+  title          String
+  slug           String          @unique
+  excerpt        String          @default("")
+  body           String
+  image          String          @default("")
+  author         String          @default("تحریریه ماهان عطر")
+  isPublished    Boolean         @default(false)
+  seoTitle       String          @default("")
+  seoDescription String          @default("")
+  categoryId     String?
+  createdAt      DateTime        @default(now())
+  category       ArticleCategory? @relation(fields: [categoryId], references: [id])
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String   @default("")
+  image     String   @default("")
+  link      String   @default("/shop")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  permissions String
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+  isRead    Boolean  @default(false)
+}
